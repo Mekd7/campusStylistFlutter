@@ -1,56 +1,52 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
+import '../viewmodel/login_view_model.dart';
 import 'package:go_router/go_router.dart';
-import '../providers/auth_provider.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+class LoginScreen extends StatelessWidget {
+  final VoidCallback onNavigateToSignUp;
+  final Function(String, bool, String) onLoginSuccess;
 
-  @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  const LoginScreen({
+    Key? key,
+    required this.onNavigateToSignUp,
+    required this.onLoginSuccess,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
+    final viewModel = Provider.of<LoginViewModel>(context);
+    final pinkColor = Color(0xFFE0136C);
+    final darkColor = Color(0xFF222020);
+    final grayColor = Color(0xFFA7A3A3);
 
-    ref.listen(authProvider, (previous, next) {
-      if (next.token != null && previous?.token == null) {
-        final isHairdresser = next.role?.toUpperCase() == 'HAIRDRESSER';
-        if (isHairdresser) {
-          context.go('/hairdresserHome/${next.token}');
-        } else {
-          context.go('/clientHome/${next.token}');
-        }
-      }
-    });
+    // Check for auto-navigation
+    if (viewModel.token != null && viewModel.token!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final isHairdresser = viewModel.role?.toUpperCase() == 'HAIRDRESSER';
+        onLoginSuccess(
+          viewModel.token!,
+          isHairdresser,
+          viewModel.userId ?? viewModel.token.hashCode.toString(),
+        );
+      });
+    }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF222020),
+      backgroundColor: darkColor,
       body: Stack(
         children: [
           CustomPaint(
-            size: Size(MediaQuery.of(context).size.width, 250),
-            painter: WavePainter(),
+            size: Size(double.infinity, 250),
+            painter: WavePainter(pinkColor),
           ),
           SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 180),
+                  SizedBox(height: 180),
                   Text(
                     'Welcome back',
                     style: TextStyle(
@@ -59,15 +55,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     'Login to CampusStylist',
                     style: TextStyle(
-                      color: const Color(0xFFA7A3A3),
+                      color: grayColor,
                       fontSize: 18,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   Text(
                     'Email',
                     style: TextStyle(
@@ -75,22 +71,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       fontSize: 18,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   TextField(
-                    controller: _emailController,
+                    onChanged: viewModel.updateEmail,
+                    keyboardType: TextInputType.emailAddress,
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.black,
-                      labelStyle: TextStyle(color: Colors.white),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(50),
                         borderSide: BorderSide.none,
                       ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     ),
-                    style: TextStyle(color: Colors.white),
-                    keyboardType: TextInputType.emailAddress,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Text(
                     'Password',
                     style: TextStyle(
@@ -98,78 +94,61 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       fontSize: 18,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   TextField(
-                    controller: _passwordController,
+                    onChanged: viewModel.updatePassword,
+                    obscureText: true,
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.black,
-                      labelStyle: TextStyle(color: Colors.white),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(50),
                         borderSide: BorderSide.none,
                       ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     ),
-                    style: TextStyle(color: Colors.white),
-                    obscureText: true,
-                    keyboardType: TextInputType.visiblePassword,
                   ),
-                  const SizedBox(height: 32),
-                  authState.isLoading
-                      ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFFE0136C),
-                    ),
-                  )
-                      : ElevatedButton(
-                    onPressed: () {
-                      ref.read(authProvider.notifier).login(
-                        _emailController.text,
-                        _passwordController.text,
-                            (token, isHairdresser, userId) {
-                          if (isHairdresser) {
-                            context.go('/hairdresserHome/$token');
-                          } else {
-                            context.go('/clientHome/$token');
-                          }
-                        },
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE0136C),
-                      minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
+                  SizedBox(height: 32),
+                  if (viewModel.isLoading)
+                    Center(child: CircularProgressIndicator(color: pinkColor))
+                  else
+                    ElevatedButton(
+                      onPressed: () => viewModel.login((token, isHairdresser, userId) {
+                        onLoginSuccess(token, isHairdresser, userId);
+                      }),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: pinkColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        minimumSize: Size(double.infinity, 56),
+                      ),
+                      child: Text(
+                        'Login',
+                        style: TextStyle(fontSize: 18, color: Colors.white),
                       ),
                     ),
-                    child: const Text(
-                      'Login',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  if (authState.errorMessage != null)
+                  SizedBox(height: 32),
+                  if (viewModel.errorMessage != null)
                     Text(
-                      authState.errorMessage!,
+                      viewModel.errorMessage!,
                       style: TextStyle(color: Colors.red, fontSize: 16),
                     ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         "Don't have an account? ",
-                        style: TextStyle(
-                          color: const Color(0xFFA7A3A3),
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: grayColor, fontSize: 16),
                       ),
                       TextButton(
-                        onPressed: () => context.go('/signup'),
+                        onPressed: onNavigateToSignUp,
                         child: Text(
                           'SIGN UP',
                           style: TextStyle(
-                            color: const Color(0xFFE0136C),
+                            color: pinkColor,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -177,7 +156,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                 ],
               ),
             ),
@@ -189,9 +168,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 }
 
 class WavePainter extends CustomPainter {
+  final Color color;
+
+  WavePainter(this.color);
+
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFFE0136C);
+    final paint = Paint()..color = color;
     final path = Path()
       ..moveTo(0, 0)
       ..lineTo(size.width, 0)

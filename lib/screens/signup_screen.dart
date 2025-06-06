@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../viewmodels/signup_view_model.dart';
+import '../viewmodel/signup_view_model.dart';
 
 class SignUpScreen extends StatelessWidget {
   final VoidCallback onNavigateToLogin;
